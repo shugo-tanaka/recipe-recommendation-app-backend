@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from openai import OpenAI
 import os
 from flask_cors import CORS
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -65,9 +66,10 @@ def recipeRecInput():
         cuisineType = "good"
         result['cuisineType'] = cuisineType
     
-    prompt = 'I currently have {} and am looking for a {} dish for {} servings with cook time under {} minutes. My allergies include {}. Can you return a list of dishes with their respecitve cook times? You can list dishes that require more ingredients but please list any additional ingredients if necessary. Please also list a link to the data source for each recipe. Please provide an array of recipes, where each element includes the name, cook time, ingredients, and instructions. Please go straight to the json array in your response.'.format(ingredientsQuantityString,cuisineType,servings,cookTime,allergiesString)
+    dictionary = "{{}}"
+    prompt = 'I currently have {} and am looking for a {} dish for {} servings with cook time under {} minutes. My allergies include {}. Can you return a list of around 5 dishes with their respecitve cook times? I will provide a format for the response. You do not need to use all the ingredients listed. Please start the response with [ and straight to the format with no dialogue preceding the array. format: [{{"name": name of dish, "cook_time": cook time for dish, "ingredients": list ingredients separated by commas and add (additional) next to ones that are additional ingredients, "instructions": cooking instructions}}, {{same format as dictionary before but with next dish}},...}}]'.format(ingredientsQuantityString,cuisineType,servings,cookTime,allergiesString)
     result['prompt'] = prompt
-    print(prompt)
+    # print(prompt)
     # Return the response as JSON
     client = OpenAI(organization = os.environ.get('ORGANIZATION_ID'),
                     project=os.environ.get('PROJECT_ID'))
@@ -83,8 +85,12 @@ def recipeRecInput():
         ],
         max_tokens=1500
     )
-    print(completion.choices[0].message.content)
-    return jsonify({'response':completion.choices[0].message.content})
+    responseString = completion.choices[0].message.content
+    response = json.loads(responseString)
+    print(response)
+    # print('done')
+
+    return jsonify({'response':response})
 
     # return jsonify(result,prompt), 200
 
