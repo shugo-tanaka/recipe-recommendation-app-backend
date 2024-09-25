@@ -67,7 +67,7 @@ def recipeRecInput():
         result['cuisineType'] = cuisineType
     
     dictionary = "{{}}"
-    prompt = 'I currently have {} and am looking for a {} dish for {} servings with cook time under {} minutes. My allergies include {}. Can you return a list of around 5 dishes with their respecitve cook times? I will provide a format for the response. You do not need to use all the ingredients listed. Please start the response with [ and straight to the format with no dialogue preceding the array. format: [{{"name": name of dish, "cook_time": cook time for dish, "ingredients": list ingredients separated by commas and add (additional) next to ones that are additional ingredients, "instructions": cooking instructions}}, {{same format as dictionary before but with next dish}},...}}]'.format(ingredientsQuantityString,cuisineType,servings,cookTime,allergiesString)
+    prompt = 'I currently have {} and am looking for a {} dish for {} servings with cook time under {} minutes. My allergies include {}. Can you return a list of around 5 dishes found on popular food websites with their respecitve cook times? I will provide a format for the response. You do not need to use all the ingredients listed. Please start the response with [ and straight to the format with no dialogue preceding the array. format: [{{"name": name of dish, "cook_time": cook time for dish, "ingredients": list ingredients separated by commas and add (additional) next to ones that are additional ingredients, "instructions": cooking instructions with steps numbered}}, {{same format as dictionary before but with next dish}},...}}]'.format(ingredientsQuantityString,cuisineType,servings,cookTime,allergiesString)
     result['prompt'] = prompt
     # print(prompt)
     # Return the response as JSON
