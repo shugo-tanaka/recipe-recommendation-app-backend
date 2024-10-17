@@ -9,9 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@dotenvx/dotenvx": "^1.19.3",
+    "dotenv": "^16.4.5",
+    "fastapi": "^0.0.8",
     "next": "14.2.11",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "save": "^2.9.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",

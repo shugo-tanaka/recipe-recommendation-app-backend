@@ -4,8 +4,16 @@ import os
 from flask_cors import CORS
 import json
 
+from typing import Union, List, Dict, Any
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from supabase import create_client, Client
+from dotenv import load_dotenv
+import logging
+import numpy as np
+
 app = Flask(__name__)
-CORS(app)
+CORS(app,resources={r"/*": {"origins": "http://localhost:3000"}})
 
 # prompt = ''
 # ingredients = []
@@ -13,6 +21,23 @@ CORS(app)
 # cookTime = 0
 # cuisineType = ""
 # allergies = []
+
+url: str=os.environ.get("SUPABASE_URL")
+key: str=os.environ.get("SUPABASE_API_KEY")
+host_link: str = os.environ.get("FRONTEND_URL")
+supabase: Client = create_client(url, key)
+
+origins = [
+    host_link,
+]
+
+# app2.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 @app.route('/')
 def home():
@@ -59,7 +84,7 @@ def recipeRecInput():
     allergiesString = ""
     for i in range(len(allergies)):
         if len(allergiesString) != 0:
-            allergeiesString += ", "
+            allergiesString += ", "
         allergiesString += allergies[i]
     
     if cuisineType == "-":
@@ -95,7 +120,6 @@ def recipeRecInput():
 
     # return jsonify(result,prompt), 200
 
-
 @app.route('/ask', methods=['POST'])
 def ask():
     data = request.json # extracts body of request
@@ -123,5 +147,49 @@ def aitest():
     print(completion.choices[0].message.content)
     return jsonify({'response':completion.choices[0].message.content})
 
+@app.route('/add_recipe', methods=['POST'])
+def addRecipe():
+    try:
+        # Get the JSON data from the request
+        recipe = request.get_json()
+        
+        # Log the received data for debugging
+        logging.info("Received data: %s", recipe)
+
+        # Ensure recipe contains the necessary fields
+        if not recipe or 'name' not in recipe or 'cook_time' not in recipe:
+            return jsonify({"error": "Invalid recipe data"}), 400
+
+        # Query Supabase for existing recipes
+        response = supabase.table('recipe_database').select('id').execute()
+        logging.info("Supabase response: %s", response.data)
+
+        # Determine the new recipe ID
+        id = 0
+        if response.data:
+            x = response.data
+            x.sort(key=lambda z: z['id'])
+            id = x[-1]['id'] + 1
+        
+        # Prepare data for upsert
+        upsert_data = [{
+            'id': id,
+            'name': recipe['name'],
+            'cook_time': recipe['cook_time'],
+            'ingredients': recipe['ingredients'],
+            'instructions': recipe['instructions']
+        }]
+        
+        # Upsert data into Supabase
+        data, count = supabase.table('recipe_database').upsert(upsert_data).execute()
+        logging.info("Upserted data: %s", data)
+
+        return jsonify({"message": "Recipe added successfully", "recipe": recipe}), 201
+
+    except Exception as e:
+        logging.error("Error adding recipe: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
