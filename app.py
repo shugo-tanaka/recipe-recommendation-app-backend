@@ -147,11 +147,44 @@ def aitest():
     print(completion.choices[0].message.content)
     return jsonify({'response':completion.choices[0].message.content})
 
+@app.route('/add_user_row', methods=['POST'])
+def addUserSaveRow():
+    try:
+        # Get the JSON data from the request
+        importedData = request.get_json()
+        UUID = importedData['id']
+        logging.info("Received data: %s", UUID)
+
+        # Ensure recipe contains the necessary fields
+        if not UUID:
+            return jsonify({"error": "no UUID"}), 400
+
+        # Prepare data for upsert
+        upsert_data = [{
+            'UUID': UUID,
+            'saved': []
+        }]
+        
+        # Upsert data into Supabase
+        data, count = supabase.table('user_saved').upsert(upsert_data).execute()
+        logging.info("Upserted data: %s", UUID)
+
+        return jsonify({"message": "saved recipe row for UUID added successfully", "UUID": UUID}), 201
+
+    except Exception as e:
+        logging.error("Error adding recipe: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
 @app.route('/add_recipe', methods=['POST'])
 def addRecipe():
     try:
         # Get the JSON data from the request
-        recipe = request.get_json()
+        data = request.get_json()
+        recipe = data.get('recipe')
+        uuid = data.get('uuid')
+        print("this is the id: {}".format(uuid))
+        # auth_header = request.get('Authorization')
+        # print(auth_header)
         
         # Log the received data for debugging
         logging.info("Received data: %s", recipe)
@@ -162,6 +195,7 @@ def addRecipe():
 
         # Query Supabase for existing recipes
         response = supabase.table('recipe_database').select('id').execute()
+        response2 = supabase.table('user_saved').select('UUID').execute()
         logging.info("Supabase response: %s", response.data)
 
         # Determine the new recipe ID
@@ -170,6 +204,8 @@ def addRecipe():
             x = response.data
             x.sort(key=lambda z: z['id'])
             id = x[-1]['id'] + 1
+
+        # once signed up, row for your UUID should already be created.
         
         # Prepare data for upsert
         upsert_data = [{
