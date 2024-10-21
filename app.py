@@ -1,3 +1,10 @@
+# Completed
+# when item is saved, add the id to the user saved table that corresponds to the UUID.
+
+# To Do
+# double check there are no duplicates in the recipe database. 
+# test fetched saved end point. last worked on updating add recipe end point since I figured out how to pull select rows from supabase.
+
 from flask import Flask, request, jsonify
 from openai import OpenAI
 import os
@@ -182,7 +189,8 @@ def addRecipe():
         data = request.get_json()
         recipe = data.get('recipe')
         uuid = data.get('uuid')
-        print("this is the id: {}".format(uuid))
+        uuidList = [uuid]
+        # print("this is the id: {}".format(uuid))
         # auth_header = request.get('Authorization')
         # print(auth_header)
         
@@ -195,7 +203,19 @@ def addRecipe():
 
         # Query Supabase for existing recipes
         response = supabase.table('recipe_database').select('id').execute()
-        response2 = supabase.table('user_saved').select('UUID').execute()
+        # print('response 1 received')
+        response2 = supabase.table('user_saved').select('*').in_('UUID', uuidList).execute()
+        # print('this is response 2',response2)
+        response2Data = response2.data
+        # print('this is response2Data', response2Data)
+        saved = response2Data[0]['saved']
+        # print('response2 received')
+        # saved = []
+        # for i in response2.data:
+        #     if i['UUID'] == uuid:
+        #         saved = i['saved']
+        # print('saved array pulled', saved)
+        
         logging.info("Supabase response: %s", response.data)
 
         # Determine the new recipe ID
@@ -205,6 +225,9 @@ def addRecipe():
             x.sort(key=lambda z: z['id'])
             id = x[-1]['id'] + 1
 
+        if id not in saved:
+            saved.append(int(id))
+        # print('id added to saved array', saved)
         # once signed up, row for your UUID should already be created.
         
         # Prepare data for upsert
@@ -215,15 +238,52 @@ def addRecipe():
             'ingredients': recipe['ingredients'],
             'instructions': recipe['instructions']
         }]
+
+        upsert_data2 = [{
+            'UUID': uuid,
+            'saved': saved
+        }]
+
+        # print(upsert_data2)
         
         # Upsert data into Supabase
         data, count = supabase.table('recipe_database').upsert(upsert_data).execute()
+        data2 = supabase.table('user_saved').update({'saved':saved}).eq('UUID', uuid).execute()
         logging.info("Upserted data: %s", data)
+        logging.info("Upserted data: %s", data2)
 
         return jsonify({"message": "Recipe added successfully", "recipe": recipe}), 201
 
     except Exception as e:
         logging.error("Error adding recipe: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route('/fetch_saved', methods=['POST'])
+def fetchSaved():
+    try:
+        # Get the JSON data from the request
+        importedData = request.get_json()
+        UUID = importedData['id']
+        logging.info("Received data: %s", UUID)
+
+        # Ensure recipe contains the necessary fields
+        if not UUID:
+            return jsonify({"error": "no UUID"}), 400
+        
+        response_user_saved = supabase.table('user_saved').select('*').execute()
+        saved_id = []
+        for i in response_user_saved.data:
+            if i['UUID'] == UUID:
+                saved_id = i['saved']
+        
+        response_recipe_database, count = supabase.table('recipe_database').select('*').in_('id', saved_id).execute()
+        logging.info("Retrieved data: %s", response_recipe_database)
+
+        return jsonify({"message": "Recipe(s) retrieved successfully", "recipe": response_recipe_database}), 201
+
+
+    except Exception as e:
+        logging.error("Error retrieving saved recipes: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
 
 
