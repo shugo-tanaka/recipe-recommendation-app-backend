@@ -1,5 +1,5 @@
 # Completed
-# when item is saved, add the id to the user saved table that corresponds to the UUID.
+
 
 # To Do
 # double check there are no duplicates in the recipe database. 
@@ -263,7 +263,7 @@ def fetchSaved():
     try:
         # Get the JSON data from the request
         importedData = request.get_json()
-        UUID = importedData['id']
+        UUID = importedData.get('id')
         logging.info("Received data: %s", UUID)
 
         # Ensure recipe contains the necessary fields
@@ -279,7 +279,7 @@ def fetchSaved():
         response_recipe_database, count = supabase.table('recipe_database').select('*').in_('id', saved_id).execute()
         logging.info("Retrieved data: %s", response_recipe_database)
 
-        return jsonify({"message": "Recipe(s) retrieved successfully", "recipe": response_recipe_database}), 201
+        return jsonify({"saved": response_recipe_database}), 201
 
 
     except Exception as e:
