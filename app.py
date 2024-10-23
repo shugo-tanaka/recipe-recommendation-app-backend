@@ -169,7 +169,8 @@ def addUserSaveRow():
         # Prepare data for upsert
         upsert_data = [{
             'UUID': UUID,
-            'saved': []
+            'saved': [],
+            'ratings': []
         }]
         
         # Upsert data into Supabase
@@ -209,6 +210,7 @@ def addRecipe():
         response2Data = response2.data
         # print('this is response2Data', response2Data)
         saved = response2Data[0]['saved']
+        ratings = response2Data[0]['ratings']
         # print('response2 received')
         # saved = []
         # for i in response2.data:
@@ -227,6 +229,7 @@ def addRecipe():
 
         if id not in saved:
             saved.append(int(id))
+            ratings.append(0)
         # print('id added to saved array', saved)
         # once signed up, row for your UUID should already be created.
         
@@ -239,16 +242,17 @@ def addRecipe():
             'instructions': recipe['instructions']
         }]
 
-        upsert_data2 = [{
-            'UUID': uuid,
-            'saved': saved
-        }]
+        # upsert_data2 = [{
+        #     'UUID': uuid,
+        #     'saved': saved,
+        #     'ratings': ratings
+        # }]
 
         # print(upsert_data2)
         
         # Upsert data into Supabase
         data, count = supabase.table('recipe_database').upsert(upsert_data).execute()
-        data2 = supabase.table('user_saved').update({'saved':saved}).eq('UUID', uuid).execute()
+        data2 = supabase.table('user_saved').update({'saved':saved, 'ratings':ratings}).eq('UUID', uuid).execute()
         logging.info("Upserted data: %s", data)
         logging.info("Upserted data: %s", data2)
 
