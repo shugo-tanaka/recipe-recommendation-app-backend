@@ -276,18 +276,46 @@ def fetchSaved():
         
         response_user_saved = supabase.table('user_saved').select('*').execute()
         saved_id = []
+        ratings = []
         for i in response_user_saved.data:
             if i['UUID'] == UUID:
                 saved_id = i['saved']
+                ratings = i['ratings']
         
         response_recipe_database, count = supabase.table('recipe_database').select('*').in_('id', saved_id).execute()
         logging.info("Retrieved data: %s", response_recipe_database)
 
-        return jsonify({"saved": response_recipe_database}), 201
+        return jsonify({"saved": response_recipe_database, "ratings":ratings}), 201
 
 
     except Exception as e:
         logging.error("Error retrieving saved recipes: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route('/update_rating', methods=['POST'])
+def updateRating():
+    try:
+        # Get the JSON data from the request
+        importedData = request.get_json()
+        uuid = importedData.get('id')
+        ratings = importedData.get('ratings')
+        logging.info("Received data: %s", uuid)
+        print(uuid, ratings)
+
+        
+
+        # Ensure recipe contains the necessary fields
+        if not uuid:
+            return jsonify({"error": "no UUID"}), 400
+        
+        data = supabase.table('user_saved').update({'ratings':ratings}).eq('UUID', uuid).execute()
+    
+
+        return jsonify({"ratings":ratings}), 201
+
+
+    except Exception as e:
+        logging.error("Error updating ratings: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
 
 
