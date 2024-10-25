@@ -318,6 +318,28 @@ def updateRating():
         logging.error("Error updating ratings: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
 
+@app.route('/unsave_rec', methods=['POST'])
+def unsaveRec():
+    try:
+        importedData = request.get_json()
+        uuid = importedData.get('id')
+        indexToRemove = importedData.get('indexToRemove')
+        newRatings = importedData.get('newRatings')
+        # print('these are the new ratings', newRatings)
+        print('this is the index to remove', indexToRemove)
+
+        data1 = supabase.table('user_saved').select('saved').in_('UUID', [uuid]).execute()
+        indeces = data1.data[0]['saved']
+        print('these are the indeces before', indeces)
+        indeces = indeces[:indexToRemove] + indeces[indexToRemove+1:]
+        print('these are the indeces',indeces)
+        if not uuid:
+            return jsonify({'error': "no UUID"}), 400
+        data = supabase.table('user_saved').update({'saved':indeces, 'ratings':newRatings}).eq('UUID', uuid).execute()
+        return jsonify({"message":"recipe has been successfully unsaved"})
+    except Exception as e:
+        logging.error("Error unsaving: %s", str(e))
+        return jsonify({"error":"Internal server error"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
