@@ -3,7 +3,7 @@
 
 # To Do
 # double check there are no duplicates in the recipe database. 
-# test fetched saved end point. last worked on updating add recipe end point since I figured out how to pull select rows from supabase.
+
 
 from flask import Flask, request, jsonify
 from openai import OpenAI
@@ -340,6 +340,35 @@ def unsaveRec():
     except Exception as e:
         logging.error("Error unsaving: %s", str(e))
         return jsonify({"error":"Internal server error"}), 500
+    
+@app.route('/unsave_rec_v2', methods=['POST'])
+def unsaveRecV2():
+    try:
+        data = request.get_json()
+        
+        uuid = data.get('id')
+        indexToRemove = data.get('indexToRemove')
+        rec = data.get('rec')
+        print('check', rec)
+        postgres_array = "{" + ", ".join([f'"{step}"' for step in rec['instructions']])+"}"
+        recipeIndex, count = supabase.table('recipe_database').select('id').match({'name':rec['name'], 'cook_time':rec['cook_time'], 'ingredients':rec['ingredients'], 'instructions':postgres_array}).execute()
+        print('this is the recipe index', recipeIndex)
+        tableData, count = supabase.table('user_saved').select('saved, ratings').in_('UUID', [uuid]).execute()
+        saved = tableData[1][0]['saved']
+        ratings = tableData[1][0]['ratings']
+        print('this is prior to loop', saved, ratings)
+        for i in range(len(saved)):
+            if saved[i] == recipeIndex[1][0]['id']:
+                saved = saved[:i] + saved[i+1:]
+                ratings = ratings[:i]+ratings[i+1:]
+                break
+        print('this is post loop', saved, ratings)
+        d = supabase.table('user_saved').update({'saved':saved, 'ratings':ratings}).eq('UUID', uuid).execute()
+        return jsonify({"message":"unsaved"})
+    except Exception as e:
+        logging.error("Error unsaving: %s", str(e))
+        return jsonify({"error":"Internal server error"}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
