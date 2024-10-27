@@ -2,7 +2,7 @@
 
 
 # To Do
-# double check there are no duplicates in the recipe database. 
+# double check there are no duplicates in the recipe database. -> need to add only if its not in there.
 
 
 from flask import Flask, request, jsonify
@@ -204,6 +204,10 @@ def addRecipe():
 
         # Query Supabase for existing recipes
         response = supabase.table('recipe_database').select('id').execute()
+        postgres_array = "{" + ", ".join([f'"{step}"' for step in recipe['instructions']])+"}"
+        duplicateItems, count = supabase.table('recipe_database').select('id').match({'name':recipe['name'], 'cook_time':recipe['cook_time'], 'ingredients':recipe['ingredients'], 'instructions':postgres_array}).execute()
+
+        print('this is the response', duplicateItems[1])
         # print('response 1 received')
         response2 = supabase.table('user_saved').select('*').in_('UUID', uuidList).execute()
         # print('this is response 2',response2)
@@ -223,9 +227,12 @@ def addRecipe():
         # Determine the new recipe ID
         id = 0
         if response.data:
-            x = response.data
-            x.sort(key=lambda z: z['id'])
-            id = x[-1]['id'] + 1
+            if duplicateItems[1]:
+                id = duplicateItems[1][0]['id']
+            else:
+                x = response.data
+                x.sort(key=lambda z: z['id'])
+                id = x[-1]['id'] + 1
 
         if id not in saved:
             saved.append(int(id))
@@ -251,7 +258,8 @@ def addRecipe():
         # print(upsert_data2)
         
         # Upsert data into Supabase
-        data, count = supabase.table('recipe_database').upsert(upsert_data).execute()
+        if not duplicateItems[1]:
+            data, count = supabase.table('recipe_database').upsert(upsert_data).execute()
         data2 = supabase.table('user_saved').update({'saved':saved, 'ratings':ratings}).eq('UUID', uuid).execute()
         logging.info("Upserted data: %s", data)
         logging.info("Upserted data: %s", data2)
