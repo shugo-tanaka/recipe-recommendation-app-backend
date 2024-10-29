@@ -68,6 +68,30 @@ def recipeRecInput():
     cookTime = data.get('cookTimeInput')
     cuisineType = data.get('cuisineTypeInput')
     allergies = data.get('allergiesInput')
+    uuid = data.get('uuid')
+   
+
+    # get top rated recipes for feedback loop
+    data1, count = supabase.table('user_saved').select('saved, ratings').in_('UUID', [uuid]).execute()
+    saved = data1[1][0]['saved']
+    ratings = data1[1][0]['ratings']
+    savedRatings = list(zip(saved, ratings))
+    savedRatings.sort(key = lambda x: x[1])
+    count = 0
+    if len(savedRatings) >= 10:
+        count = 10
+    else:
+        count = len(savedRatings)
+
+    topSaved = [savedRatings[i][0] for i in range(count)]
+    topSavedRatings = [savedRatings[i][1] for i in range(count)]
+    
+    topRecs, count = supabase.table('recipe_database').select('name, cook_time, ingredients').order('id', desc=False).in_('id', topSaved).execute()
+    topSavedRatings2 = list(zip(topSaved, topSavedRatings))
+    topSavedRatings2.sort(key = lambda x: x[0], reverse=False)
+    # top recs is in ascending order
+    print('these are the top recipes', topRecs[1])
+    print('these are the corresponding ratings:', topSavedRatings2)
 
     # For now, just return the received data as a response
     result = {
@@ -290,7 +314,7 @@ def fetchSaved():
                 saved_id = i['saved']
                 ratings = i['ratings']
         
-        response_recipe_database, count = supabase.table('recipe_database').select('*').in_('id', saved_id).execute()
+        response_recipe_database, count = supabase.table('recipe_database').select('*').in_('id', saved_id).order('id', desc=False).execute()
         logging.info("Retrieved data: %s", response_recipe_database)
 
         return jsonify({"saved": response_recipe_database, "ratings":ratings}), 201
