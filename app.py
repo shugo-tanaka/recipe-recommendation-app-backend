@@ -86,12 +86,21 @@ def recipeRecInput():
     topSaved = [savedRatings[i][0] for i in range(count)]
     topSavedRatings = [savedRatings[i][1] for i in range(count)]
     
-    topRecs, count = supabase.table('recipe_database').select('name, cook_time, ingredients').order('id', desc=False).in_('id', topSaved).execute()
+    topRecs, count = supabase.table('recipe_database').select('name').order('id', desc=False).in_('id', topSaved).execute()
     topSavedRatings2 = list(zip(topSaved, topSavedRatings))
     topSavedRatings2.sort(key = lambda x: x[0], reverse=False)
     # top recs is in ascending order
-    print('these are the top recipes', topRecs[1])
-    print('these are the corresponding ratings:', topSavedRatings2)
+    # print('these are the top recipes', topRecs[1])
+    # print('these are the corresponding ratings:', topSavedRatings2)
+    feedBackPrompt = "Note, here are recipes and their corresponding ratings out of 5 so that the response can be tailored to what you believe may be preferences: "
+    if len(topRecs[1]) == 0:
+        feeBackPrompt = ""
+    else:
+        for i in range(len(topRecs[1])):
+            feedBackPrompt += "{} was rated a {},".format(topRecs[1][i]['name'], topSavedRatings2[i][1])
+        feedBackPrompt = feedBackPrompt[:-1] + ". Also note that any 0 ratings may indicate a lack of rating as opposed to a 0/5 rating."
+    
+    # print('this is the feed back prompt:', feedBackPrompt)
 
     # For now, just return the received data as a response
     result = {
@@ -123,9 +132,9 @@ def recipeRecInput():
         result['cuisineType'] = cuisineType
     
     dictionary = "{{}}"
-    prompt = 'I currently have {} and am looking for a {} dish for {} servings with cook time under {} minutes. My allergies include {}. Can you return a list of at least 5 and up to 15 dishes found on popular food websites with their respecitve cook times? I will provide a format for the response. You do not need to use all the ingredients listed. Please start the response with [ and straight to the format with no dialogue preceding the array. format: [{{"name": name of dish, "cook_time": cook time for dish, "ingredients": list ingredients separated by commas and add (additional) next to ones that are additional ingredients, "instructions": array with numbered cooking steps as elements}}, {{same format as dictionary before but with next dish}},...}}]'.format(ingredientsQuantityString,cuisineType,servings,cookTime,allergiesString)
+    prompt = 'I currently have {} and am looking for a {} dish for {} servings with cook time under {} minutes. My allergies include {}. Can you return a list of 5 to 15 dishes found on popular food websites with their respecitve cook times? I will provide a format for the response. You do not need to use all the ingredients listed. {} Please start the response with [ and straight to the format with no dialogue preceding the array. format: [{{"name": name of dish, "cook_time": cook time for dish, "ingredients": list ingredients separated by commas and add (additional) next to ones that are additional ingredients, "instructions": array with numbered cooking steps as elements}}, {{same format as dictionary before but with next dish}},...}}]'.format(ingredientsQuantityString,cuisineType,servings,cookTime,allergiesString, feedBackPrompt)
     result['prompt'] = prompt
-    # print(prompt)
+    print(prompt)
     # Return the response as JSON
     client = OpenAI(organization = os.environ.get('ORGANIZATION_ID'),
                     project=os.environ.get('PROJECT_ID'))
